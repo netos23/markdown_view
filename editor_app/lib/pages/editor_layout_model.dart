@@ -23,6 +23,11 @@ extension EditorLayoutMap on EditorLayout {
   }
 }
 
+extension EditorLayoutIterator on EditorLayout {
+  EditorLayout get next =>
+      EditorLayout.values[(index + 1) % EditorLayout.values.length];
+}
+
 class EditorLayoutCubit extends Cubit<EditorLayout> {
   EditorLayoutCubit() : super(EditorLayout.sideBySide);
 
@@ -32,6 +37,5 @@ class EditorLayoutCubit extends Cubit<EditorLayout> {
 
   void sideBySide() => emit(EditorLayout.sideBySide);
 
-  void next() =>
-      emit(EditorLayout.values[(state.index + 1) % EditorLayout.values.length]);
+  void next() => emit(state.next);
 }

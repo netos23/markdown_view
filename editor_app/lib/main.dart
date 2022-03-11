@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown_view/pages/editor_page.dart';
 
 void main() {
