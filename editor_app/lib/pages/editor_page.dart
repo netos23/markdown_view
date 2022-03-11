@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown_view/pages/editor_layout_model.dart';
 import 'package:markdown_view/pages/editor_model.dart';
 
 class EditorPage extends StatefulWidget {
@@ -13,23 +14,53 @@ class EditorPage extends StatefulWidget {
 }
 
 class _EditorPageState extends State<EditorPage> {
+  final _textController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: BlocProvider(
-        create: (context) => TextEditCubit(),
-        child: _buildBody(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => TextEditCubit()),
+        BlocProvider(create: (context) => EditorLayoutCubit()),
+      ],
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: BlocBuilder<EditorLayoutCubit, EditorLayout>(
+            builder: (BuildContext context, data) {
+              return data.when(
+                onEditor: _buildMarkdownCard(context),
+                onPreview: _buildPreviewCard(context),
+                onSideBySide: _buildSideBySideViewContainer(),
+              );
+            },
+          ),
+        ),
+        floatingActionButton: BlocBuilder<EditorLayoutCubit, EditorLayout>(
+          builder: (BuildContext context, data) {
+            return FloatingActionButton(
+              onPressed: context.read<EditorLayoutCubit>().next,
+              child: Icon(
+                data.when(
+                  onEditor: Icons.edit,
+                  onPreview: Icons.preview,
+                  onSideBySide: Icons.view_sidebar,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  OrientationBuilder _buildBody() {
+  Widget _buildSideBySideViewContainer() {
     return OrientationBuilder(
       builder: (BuildContext context, Orientation orientation) {
-        return _buildGridView(
+        return _buildSideBySideView(
           context: context,
           axis: orientation == Orientation.landscape ? 2 : 1,
         );
@@ -37,41 +68,54 @@ class _EditorPageState extends State<EditorPage> {
     );
   }
 
-  GridView _buildGridView({
+  Widget _buildSideBySideView({
     required BuildContext context,
     required int axis,
   }) {
     return GridView.count(
-      padding: const EdgeInsets.all(20),
       crossAxisSpacing: 20,
       crossAxisCount: axis,
       children: [
-        _buildCard(
-          context: context,
-          title: 'Markdown',
-          child: TextField(
-            decoration: const InputDecoration(
-              hintText: 'Write your markdown here',
-            ),
-            onChanged: context.read<TextEditCubit>().update,
-            keyboardType: TextInputType.multiline,
-            maxLines: null,
-          ),
-        ),
-        _buildCard(
-          context: context,
-          title: 'Preview',
-          child: BlocBuilder<TextEditCubit, String>(
-            builder: (BuildContext context, data) {
-              return Markdown(data: data);
-            },
-          ),
-        )
+        _buildMarkdownCard(context),
+        _buildPreviewCard(context),
       ],
     );
   }
 
-  Card _buildCard({
+  Widget _buildPreviewCard(BuildContext context) {
+    return _buildCard(
+      context: context,
+      title: 'Preview',
+      child: BlocBuilder<TextEditCubit, String>(
+        builder: (BuildContext context, data) {
+          return Markdown(data: data);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMarkdownCard(BuildContext context) {
+    return _buildCard(
+      context: context,
+      title: 'Markdown',
+      child: BlocListener<EditorLayoutCubit, EditorLayout>(
+        listener: (context, state) {
+          _textController.text = context.read<TextEditCubit>().state;
+        },
+        child: TextField(
+          controller: _textController,
+          decoration: const InputDecoration(
+            hintText: 'Write your markdown here',
+          ),
+          onChanged: context.read<TextEditCubit>().update,
+          keyboardType: TextInputType.multiline,
+          maxLines: null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard({
     required BuildContext context,
     required String title,
     required Widget child,
@@ -98,5 +142,11 @@ class _EditorPageState extends State<EditorPage> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 }
